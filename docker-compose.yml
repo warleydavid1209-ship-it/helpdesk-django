@@ -1,0 +1,19 @@
+# PostgreSQL local para desenvolvimento:  docker compose up -d
+# Depois use no .env:  DB_ENGINE=postgres  DB_HOST=localhost  DB_PORT=5432
+services:
+  db:
+    image: postgres:16
+    container_name: helpdesk-db
+    environment:
+      POSTGRES_DB: helpdesk
+      POSTGRES_USER: helpdesk_user
+      POSTGRES_PASSWORD: helpdesk_pass
+    ports:
+      - "5432:5432"        # exposto para conexões externas (use firewall/SSL em produção)
+    volumes:
+      - helpdesk_pgdata:/var/lib/postgresql/data
+      # Os scripts abaixo rodam automaticamente na 1ª criação do volume:
+      - ./sql/01_ddl.sql:/docker-entrypoint-initdb.d/01_ddl.sql:ro
+      - ./sql/02_dml_dados_iniciais.sql:/docker-entrypoint-initdb.d/02_dml_dados_iniciais.sql:ro
+volumes:
+  helpdesk_pgdata:

@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block titulo %}Chamado #{{ chamado.pk }} · Help Desk{% endblock %}
+{% block conteudo %}
+<a class="small" href="{% url 'chamado_lista' %}">← Voltar para a lista</a>
+<div class="row g-4 mt-1">
+  <div class="col-lg-8">
+    <div class="card shadow-sm mb-3"><div class="card-body">
+      <div class="d-flex justify-content-between align-items-start">
+        <h1 class="h4">#{{ chamado.pk }} · {{ chamado.titulo }}</h1>
+        <span class="badge badge-status-{{ chamado.status }} fs-6">{{ chamado.get_status_display }}</span>
+      </div>
+      <p class="text-muted small mb-2">Aberto por {{ chamado.solicitante.nome }} em {{ chamado.aberto_em|date:"d/m/Y H:i" }} · Categoria: {{ chamado.categoria.nome }} · Prioridade: {{ chamado.get_prioridade_display }}</p>
+      <p style="white-space:pre-line">{{ chamado.descricao }}</p>
+      {% if anexos %}<hr><strong class="small">Anexos</strong>
+      <ul class="mb-0">{% for a in anexos %}<li><a href="{{ a.arquivo.url }}" target="_blank">{{ a.arquivo.name }}</a></li>{% endfor %}</ul>{% endif %}
+    </div></div>
+
+    <h2 class="h6">Interações</h2>
+    {% for c in comentarios %}
+    <div class="card mb-2 {% if c.interno %}nota-interna{% endif %}"><div class="card-body py-2">
+      <div class="small text-muted">{{ c.autor.nome }} · {{ c.criado_em|date:"d/m/Y H:i" }}{% if c.interno %} · <strong>nota interna</strong>{% endif %}</div>
+      <div style="white-space:pre-line">{{ c.texto }}</div>
+    </div></div>
+    {% empty %}<p class="text-muted small">Nenhuma interação ainda.</p>{% endfor %}
+
+    {% if chamado.status != 'fechado' %}
+    <form method="post" class="card shadow-sm mt-3"><div class="card-body">
+      {% csrf_token %}<input type="hidden" name="acao" value="comentar">
+      <label class="form-label">Novo comentário</label>
+      <textarea class="form-control mb-2" name="texto" rows="3" required></textarea>
+      {% if user.eh_equipe %}<div class="form-check mb-2"><input class="form-check-input" type="checkbox" name="interno" id="interno"><label class="form-check-label" for="interno">Nota interna (invisível ao cliente)</label></div>{% endif %}
+      <button class="btn btn-primary btn-sm">Comentar</button>
+    </div></form>
+    <form method="post" enctype="multipart/form-data" class="card shadow-sm mt-3"><div class="card-body">
+      {% csrf_token %}<input type="hidden" name="acao" value="anexar">
+      <label class="form-label">Anexar arquivo (até 5 MB)</label>
+      <div class="input-group"><input class="form-control" type="file" name="arquivo" required><button class="btn btn-outline-secondary">Enviar</button></div>
+    </div></form>
+    {% endif %}
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card shadow-sm mb-3"><div class="card-body">
+      <h2 class="h6">Atendimento</h2>
+      <p class="mb-2 small">Técnico: <strong>{{ chamado.tecnico.nome|default:"não atribuído" }}</strong></p>
+      {% if user.eh_equipe and chamado.status != 'fechado' %}
+        {% if chamado.tecnico_id != user.id %}
+        <form method="post" class="mb-2">{% csrf_token %}<input type="hidden" name="acao" value="assumir"><button class="btn btn-success btn-sm w-100">Assumir chamado</button></form>
+        {% endif %}
+        {% if proximos_status %}
+        <form method="post" class="mb-2">{% csrf_token %}<input type="hidden" name="acao" value="status">
+          <label class="form-label small mb-1">Alterar status</label>
+          <div class="input-group input-group-sm"><select class="form-select" name="status">{% for v,l in proximos_status %}<option value="{{ v }}">{{ l }}</option>{% endfor %}</select><button class="btn btn-outline-primary">Aplicar</button></div></form>
+        {% endif %}
+        <form method="post" class="mb-2">{% csrf_token %}<input type="hidden" name="acao" value="prioridade">
+          <label class="form-label small mb-1">Prioridade</label>
+          <div class="input-group input-group-sm"><select class="form-select" name="prioridade">{% for v,l in prioridade_opcoes %}<option value="{{ v }}" {% if chamado.prioridade == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select><button class="btn btn-outline-primary">Aplicar</button></div></form>
+        {% if user.eh_admin %}
+        <form method="post">{% csrf_token %}<input type="hidden" name="acao" value="atribuir">
+          <label class="form-label small mb-1">Atribuir a técnico</label>
+          <div class="input-group input-group-sm"><select class="form-select" name="tecnico">{% for t in tecnicos %}<option value="{{ t.pk }}">{{ t.nome }}</option>{% endfor %}</select><button class="btn btn-outline-primary">Atribuir</button></div></form>
+        {% endif %}
+      {% endif %}
+    </div></div>
+    <div class="card shadow-sm"><div class="card-body">
+      <h2 class="h6">Histórico de status</h2>
+      <ul class="list-unstyled small mb-0">
+      {% for h in historico %}<li class="mb-1">{{ h.alterado_em|date:"d/m H:i" }} — {% if h.status_anterior %}{{ h.status_anterior }} → {% endif %}<strong>{{ h.status_novo }}</strong> <span class="text-muted">({{ h.alterado_por.nome }})</span></li>{% endfor %}
+      </ul>
+    </div></div>
+  </div>
+</div>
+{% endblock %}

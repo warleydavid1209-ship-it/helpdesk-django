@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block titulo %}Chamados · Help Desk{% endblock %}
+{% block conteudo %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h4 mb-0">{% if user.eh_equipe %}Fila de chamados{% else %}Meus chamados{% endif %}</h1>
+  <a class="btn btn-primary" href="{% url 'chamado_novo' %}">+ Novo chamado</a>
+</div>
+<form class="row g-2 mb-3" method="get">
+  <div class="col-md-4"><input class="form-control" name="q" value="{{ f.q }}" placeholder="Buscar por título"></div>
+  <div class="col-md-2"><select class="form-select" name="status"><option value="">Todos os status</option>
+    {% for v,l in status_opcoes %}<option value="{{ v }}" {% if f.status == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+  <div class="col-md-2"><select class="form-select" name="prioridade"><option value="">Toda prioridade</option>
+    {% for v,l in prioridade_opcoes %}<option value="{{ v }}" {% if f.prioridade == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+  {% if user.eh_equipe %}
+  <div class="col-md-2"><select class="form-select" name="escopo"><option value="">Todos</option>
+    <option value="sem_tecnico" {% if f.escopo == 'sem_tecnico' %}selected{% endif %}>Sem técnico</option>
+    <option value="meus" {% if f.escopo == 'meus' %}selected{% endif %}>Atribuídos a mim</option></select></div>
+  {% endif %}
+  <div class="col-md-2"><button class="btn btn-outline-secondary w-100">Filtrar</button></div>
+</form>
+<div class="card shadow-sm"><div class="table-responsive">
+<table class="table table-hover align-middle mb-0">
+  <thead class="table-light"><tr><th>#</th><th>Título</th><th>Categoria</th><th>Prioridade</th><th>Status</th>{% if user.eh_equipe %}<th>Solicitante</th><th>Técnico</th>{% endif %}<th>Aberto em</th></tr></thead>
+  <tbody>
+  {% for c in chamados %}
+  <tr>
+    <td>{{ c.pk }}</td>
+    <td><a href="{% url 'chamado_detalhe' c.pk %}">{{ c.titulo }}</a></td>
+    <td>{{ c.categoria.nome }}</td>
+    <td>{{ c.get_prioridade_display }}</td>
+    <td><span class="badge badge-status-{{ c.status }}">{{ c.get_status_display }}</span></td>
+    {% if user.eh_equipe %}<td>{{ c.solicitante.nome }}</td><td>{{ c.tecnico.nome|default:"—" }}</td>{% endif %}
+    <td>{{ c.aberto_em|date:"d/m/Y H:i" }}</td>
+  </tr>
+  {% empty %}
+  <tr><td colspan="8" class="text-center text-muted py-4">Nenhum chamado encontrado.</td></tr>
+  {% endfor %}
+  </tbody>
+</table></div></div>
+{% endblock %}

@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block titulo %}Dashboard · Help Desk{% endblock %}
+{% block conteudo %}
+<h1 class="h4 mb-3">Dashboard de chamados</h1>
+<div class="row g-3 mb-4">
+  <div class="col-md-6"><div class="card shadow-sm"><div class="card-body text-center"><div class="display-5">{{ total }}</div><div class="text-muted">Chamados no total</div></div></div></div>
+  <div class="col-md-6"><div class="card shadow-sm"><div class="card-body text-center"><div class="display-5">{{ sem_tecnico }}</div><div class="text-muted">Em aberto sem técnico</div></div></div></div>
+</div>
+<div class="row g-3">
+  <div class="col-md-6"><div class="card shadow-sm"><div class="card-header">Por status</div><ul class="list-group list-group-flush">
+    {% for nome,qtd in por_status %}<li class="list-group-item d-flex justify-content-between">{{ nome }}<span class="badge bg-secondary">{{ qtd }}</span></li>{% endfor %}</ul></div></div>
+  <div class="col-md-6"><div class="card shadow-sm"><div class="card-header">Por prioridade</div><ul class="list-group list-group-flush">
+    {% for nome,qtd in por_prioridade %}<li class="list-group-item d-flex justify-content-between">{{ nome }}<span class="badge bg-secondary">{{ qtd }}</span></li>{% endfor %}</ul></div></div>
+</div>
+{% endblock %}
