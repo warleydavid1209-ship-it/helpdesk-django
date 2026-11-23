@@ -284,3 +284,86 @@ class TelasTest(BaseTeste):
         self.client.force_login(self.tecnico)
         self.assertContains(self.client.get(reverse("chamado_lista") + "?escopo=sem_tecnico"), "Computador não liga")
         self.assertContains(self.client.get(reverse("dashboard")), "Chamados no total")
+
+
+class NotificacaoTest(BaseTeste):
+    def test_abrir_chamado_avisa_tecnicos(self):
+        from django.core import mail
+        self.novo_chamado()
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn(self.tecnico.email, mail.outbox[0].to)
+
+    def test_mudanca_de_status_avisa_o_cliente(self):
+        from django.core import mail
+        c = self.novo_chamado()
+        mail.outbox.clear()
+        services.alterar_status(c, self.tecnico, "em_andamento")
+        self.assertEqual(mail.outbox[0].to, [self.cliente.email])
+
+    def test_nota_interna_nao_gera_email_para_o_cliente(self):
+        from django.core import mail
+        c = self.novo_chamado()
+        mail.outbox.clear()
+        services.comentar(c, self.tecnico, "Nota só da equipe", interno=True)
+        self.assertEqual(len(mail.outbox), 0)
+        services.comentar(c, self.tecnico, "Resposta pública ao cliente")
+        self.assertEqual(mail.outbox[0].to, [self.cliente.email])
+
+    def test_falha_de_email_nao_derruba_o_chamado(self):
+        from unittest import mock
+        with mock.patch("chamados.services.send_mail", side_effect=OSError("smtp fora do ar")):
+            c = self.novo_chamado()
+        self.assertTrue(Chamado.objects.filter(pk=c.pk).exists())
+
+
+class RelatoriosEGestaoTest(BaseTeste):
+    def test_indicador_por_categoria(self):
+        self.novo_chamado()
+        self.novo_chamado()
+        self.assertEqual(services.indicadores()["por_categoria"], {"Hardware": 2})
+
+    def test_api_dashboard_traz_por_categoria(self):
+        self.novo_chamado()
+        r = self.api(self.tecnico).get("/api/dashboard/")
+        self.assertEqual(r.json()["por_categoria"], {"Hardware": 1})
+
+    def test_filtro_por_categoria_na_tela(self):
+        outra = Categoria.objects.create(nome="Rede", departamento=self.dep)
+        self.novo_chamado(titulo="Chamado de hardware")
+        services.abrir_chamado(self.cliente, "Chamado de rede", "A rede está caindo toda hora.", outra)
+        self.client.force_login(self.tecnico)
+        r = self.client.get(reverse("chamado_lista"), {"categoria": outra.pk})
+        self.assertContains(r, "Chamado de rede")
+        self.assertNotContains(r, "Chamado de hardware")
+
+    def test_csv_so_para_equipe(self):
+        self.novo_chamado()
+        self.client.force_login(self.cliente)
+        self.assertEqual(self.client.get(reverse("exportar_csv")).status_code, 404)
+        self.client.force_login(self.tecnico)
+        r = self.client.get(reverse("exportar_csv"))
+        self.assertEqual(r.status_code, 200)
+        self.assertIn("text/csv", r["Content-Type"])
+        self.assertIn("Computador não liga", r.content.decode("utf-8"))
+
+    def test_gerenciar_so_admin_e_cria_categoria(self):
+        self.client.force_login(self.tecnico)
+        self.assertEqual(self.client.get(reverse("gerenciar")).status_code, 404)
+        self.client.force_login(self.admin)
+        self.client.post(reverse("gerenciar"), {"acao": "departamento", "nome": "Financeiro"})
+        dep = Departamento.objects.get(nome="Financeiro")
+        self.client.post(reverse("gerenciar"), {"acao": "categoria", "nome": "Pagamentos", "departamento": dep.pk})
+        self.assertTrue(Categoria.objects.filter(nome="Pagamentos", departamento=dep).exists())
+
+    def test_gerenciar_rejeita_duplicado_e_nome_curto(self):
+        self.client.force_login(self.admin)
+        self.client.post(reverse("gerenciar"), {"acao": "departamento", "nome": "TI"})
+        self.client.post(reverse("gerenciar"), {"acao": "departamento", "nome": "ab"})
+        self.assertEqual(Departamento.objects.count(), 1)
+
+    def test_dashboard_renderiza_graficos(self):
+        self.novo_chamado()
+        self.client.force_login(self.tecnico)
+        r = self.client.get(reverse("dashboard"))
+        self.assertContains(r, "gCat")
+        self.assertContains(r, "Hardware")

@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block titulo %}Categorias e departamentos · Help Desk{% endblock %}
+{% block conteudo %}
+<h1 class="h4 mb-3">Categorias e departamentos</h1>
+<div class="row g-3">
+  <div class="col-md-6">
+    <div class="card shadow-sm mb-3"><div class="card-header">Novo departamento</div><div class="card-body">
+      <form method="post" class="row g-2">{% csrf_token %}<input type="hidden" name="acao" value="departamento">
+        <div class="col-12"><input class="form-control" name="nome" placeholder="Nome (ex.: Financeiro)" required></div>
+        <div class="col-12"><input class="form-control" name="descricao" placeholder="Descrição (opcional)"></div>
+        <div class="col-12"><button class="btn btn-primary">Cadastrar departamento</button></div>
+      </form></div></div>
+    <div class="card shadow-sm"><div class="card-header">Departamentos ({{ departamentos|length }})</div>
+      <ul class="list-group list-group-flush">{% for d in departamentos %}<li class="list-group-item">{{ d.nome }}</li>{% empty %}<li class="list-group-item text-muted">Nenhum departamento.</li>{% endfor %}</ul></div>
+  </div>
+  <div class="col-md-6">
+    <div class="card shadow-sm mb-3"><div class="card-header">Nova categoria</div><div class="card-body">
+      <form method="post" class="row g-2">{% csrf_token %}<input type="hidden" name="acao" value="categoria">
+        <div class="col-12"><input class="form-control" name="nome" placeholder="Nome (ex.: Impressora)" required></div>
+        <div class="col-12"><select class="form-select" name="departamento" required><option value="">Departamento responsável...</option>
+          {% for d in departamentos %}<option value="{{ d.pk }}">{{ d.nome }}</option>{% endfor %}</select></div>
+        <div class="col-12"><input class="form-control" name="descricao" placeholder="Descrição (opcional)"></div>
+        <div class="col-12"><button class="btn btn-primary">Cadastrar categoria</button></div>
+      </form></div></div>
+    <div class="card shadow-sm"><div class="card-header">Categorias ({{ categorias|length }})</div>
+      <ul class="list-group list-group-flush">{% for c in categorias %}<li class="list-group-item d-flex justify-content-between">{{ c.nome }}<span class="text-muted small">{{ c.departamento.nome }}</span></li>{% empty %}<li class="list-group-item text-muted">Nenhuma categoria.</li>{% endfor %}</ul></div>
+  </div>
+</div>
+{% endblock %}

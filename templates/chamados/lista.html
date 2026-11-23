@@ -6,11 +6,13 @@
   <a class="btn btn-primary" href="{% url 'chamado_novo' %}">+ Novo chamado</a>
 </div>
 <form class="row g-2 mb-3" method="get">
-  <div class="col-md-4"><input class="form-control" name="q" value="{{ f.q }}" placeholder="Buscar por título"></div>
+  <div class="col-md-2"><input class="form-control" name="q" value="{{ f.q }}" placeholder="Buscar por título"></div>
   <div class="col-md-2"><select class="form-select" name="status"><option value="">Todos os status</option>
     {% for v,l in status_opcoes %}<option value="{{ v }}" {% if f.status == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
   <div class="col-md-2"><select class="form-select" name="prioridade"><option value="">Toda prioridade</option>
     {% for v,l in prioridade_opcoes %}<option value="{{ v }}" {% if f.prioridade == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+  <div class="col-md-2"><select class="form-select" name="categoria"><option value="">Toda categoria</option>
+    {% for c in categorias %}<option value="{{ c.pk }}" {% if f.categoria == c.pk|stringformat:"s" %}selected{% endif %}>{{ c.nome }}</option>{% endfor %}</select></div>
   {% if user.eh_equipe %}
   <div class="col-md-2"><select class="form-select" name="escopo"><option value="">Todos</option>
     <option value="sem_tecnico" {% if f.escopo == 'sem_tecnico' %}selected{% endif %}>Sem técnico</option>

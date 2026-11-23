@@ -20,6 +20,8 @@ urlpatterns = [
     path("chamados/novo/", web.chamado_novo, name="chamado_novo"),
     path("chamados/<int:pk>/", web.chamado_detalhe, name="chamado_detalhe"),
     path("dashboard/", web.dashboard, name="dashboard"),
+    path("relatorios/chamados.csv", web.exportar_csv, name="exportar_csv"),
+    path("gerenciar/", web.gerenciar, name="gerenciar"),
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

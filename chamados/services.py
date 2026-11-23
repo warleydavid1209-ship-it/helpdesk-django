@@ -5,6 +5,8 @@ garantindo que as mesmas validações valham nos dois caminhos.
 """
 import os
 
+from django.conf import settings
+from django.core.mail import send_mail
 from django.db import transaction
 from django.utils import timezone
 
@@ -25,6 +27,27 @@ TRANSICOES = {
 
 EXTENSOES_PERMITIDAS = {".jpg", ".jpeg", ".png", ".gif", ".pdf", ".txt", ".log", ".docx", ".xlsx"}
 TAMANHO_MAX_ANEXO = 5 * 1024 * 1024  # 5 MB
+
+
+def notificar(destinatarios, assunto, mensagem):
+    """Envia e-mail de notificação (RF de acompanhamento). Nunca derruba a operação.
+
+    Em desenvolvimento o e-mail aparece no terminal (EMAIL_BACKEND=console).
+    """
+    emails = sorted({u.email for u in destinatarios if u and u.email and u.is_active})
+    if not emails:
+        return
+    try:
+        send_mail(f"[Help Desk] {assunto}", mensagem, settings.DEFAULT_FROM_EMAIL, emails, fail_silently=True)
+    except Exception:  # notificação é acessória: falha não pode desfazer o chamado
+        pass
+
+
+def _equipe_do_chamado(chamado):
+    """Técnico responsável; se não houver, todos os técnicos ativos."""
+    if chamado.tecnico_id:
+        return [chamado.tecnico]
+    return list(Usuario.objects.filter(perfil=Usuario.Perfil.TECNICO, is_active=True))
 
 
 class RegraNegocioError(Exception):
@@ -62,6 +85,8 @@ def abrir_chamado(usuario, titulo, descricao, categoria, prioridade=Chamado.Prio
         prioridade=prioridade, solicitante=usuario, status=S.ABERTO,
     )
     _registrar_historico(chamado, usuario, "", S.ABERTO)
+    notificar(_equipe_do_chamado(chamado), f"Novo chamado #{chamado.pk}: {chamado.titulo}",
+              f"{usuario.nome} abriu o chamado #{chamado.pk} (prioridade {chamado.get_prioridade_display()}).")
     return chamado
 
 
@@ -82,6 +107,8 @@ def alterar_status(chamado, usuario, novo_status):
     chamado.fechado_em = timezone.now() if novo_status == S.FECHADO else None
     chamado.save()
     _registrar_historico(chamado, usuario, atual, novo_status)
+    notificar([chamado.solicitante], f"Chamado #{chamado.pk} agora está: {chamado.get_status_display()}",
+              f"O status do seu chamado \"{chamado.titulo}\" mudou de {Chamado.Status(atual).label} para {chamado.get_status_display()}.")
     return chamado
 
 
@@ -100,6 +127,8 @@ def assumir_chamado(chamado, usuario):
     chamado.save()
     if anterior != chamado.status:
         _registrar_historico(chamado, usuario, anterior, chamado.status)
+    notificar([chamado.solicitante], f"Chamado #{chamado.pk} em atendimento",
+              f"{usuario.nome} assumiu o seu chamado \"{chamado.titulo}\".")
     return chamado
 
 
@@ -118,6 +147,8 @@ def atribuir_tecnico(chamado, usuario, tecnico):
     chamado.save()
     if anterior != chamado.status:
         _registrar_historico(chamado, usuario, anterior, chamado.status)
+    notificar([tecnico, chamado.solicitante], f"Chamado #{chamado.pk} atribuído a {tecnico.nome}",
+              f"O chamado \"{chamado.titulo}\" foi atribuído ao técnico {tecnico.nome}.")
     return chamado
 
 
@@ -144,7 +175,12 @@ def comentar(chamado, autor, texto, interno=False):
         raise RegraNegocioError("Chamado fechado não aceita novos comentários.")
     if interno and not autor.eh_equipe:
         raise SemPermissaoError("Apenas a equipe pode criar notas internas.")
-    return Comentario.objects.create(chamado=chamado, autor=autor, texto=texto, interno=bool(interno))
+    comentario = Comentario.objects.create(chamado=chamado, autor=autor, texto=texto, interno=bool(interno))
+    if not interno:  # notas internas nunca geram e-mail para o cliente
+        destinos = [chamado.solicitante] if autor.eh_equipe else _equipe_do_chamado(chamado)
+        notificar([d for d in destinos if d.pk != autor.pk], f"Novo comentário no chamado #{chamado.pk}",
+                  f"{autor.nome} comentou no chamado \"{chamado.titulo}\":\n\n{texto}")
+    return comentario
 
 
 def anexar(chamado, usuario, arquivo):
@@ -169,5 +205,6 @@ def indicadores():
         "total": Chamado.objects.count(),
         "por_status": contagem("status", Chamado.Status),
         "por_prioridade": contagem("prioridade", Chamado.Prioridade),
+        "por_categoria": dict(Chamado.objects.values_list("categoria__nome").annotate(t=Count("id")).order_by("-t")),
         "sem_tecnico": Chamado.objects.filter(tecnico__isnull=True).exclude(status=S.FECHADO).count(),
     }

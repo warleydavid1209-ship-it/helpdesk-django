@@ -69,7 +69,7 @@ psql -h localhost -U helpdesk_user -d helpdesk -f sql/02_dml_dados_iniciais.sql
 
 ### Modelo de dados
 
-Tabelas: `departamento`, `usuario`, `categoria`, `chamado`, `comentario`, `anexo`, `historico_status` (diagrama MER em [`docs/etapa1/mer.png`](docs/etapa1/mer.png)).
+Tabelas: `departamento`, `usuario`, `categoria`, `chamado`, `comentario`, `anexo`, `historico_status`. Diagrama MER: [`docs/etapa1/mer.png`](docs/etapa1/mer.png). Descrição completa de cada coluna, relacionamentos e restrições: [**Dicionário de dados**](docs/dicionario_de_dados.md).
 
 ---
 
@@ -131,7 +131,7 @@ curl -X POST http://127.0.0.1:8000/api/chamados/ \
      -d '{"titulo":"Monitor piscando","descricao":"O monitor pisca a cada poucos segundos.","categoria":1,"prioridade":"alta"}'
 ```
 
-Coleção do **Postman** pronta: [`docs/postman_collection.json`](docs/postman_collection.json) (importe, rode *Login* e use as demais requisições).
+Coleção do **Postman** pronta: [`docs/postman_collection.json`](docs/postman_collection.json) (importe, rode *Login* e use as demais requisições). Exemplos de requisição e **resposta reais** (sucesso e erros 400/401/403): [`docs/exemplos_api.md`](docs/exemplos_api.md).
 
 **Status e transições:** `aberto → em_andamento → aguardando ⇄ em_andamento → resolvido → fechado` (chamado `fechado` não aceita comentários, anexos nem novas transições).
 
@@ -143,7 +143,7 @@ Coleção do **Postman** pronta: [`docs/postman_collection.json`](docs/postman_c
 python manage.py test
 ```
 
-36 testes automatizados (autenticação, validação de payload, permissões por perfil, fluxo de status, notas internas, anexos, dashboard e telas). Executados com sucesso em **SQLite** e **PostgreSQL 16**.
+47 testes automatizados (autenticação, validação de payload, permissões por perfil, fluxo de status, notas internas, anexos, dashboard, notificações por e-mail, relatório CSV, gestão de categorias e telas). Executados com sucesso em **SQLite** (e, na Etapa 2, também em **PostgreSQL 16**).
 
 ## 6. Estrutura
 
@@ -156,5 +156,16 @@ sql/           scripts DDL e DML (PostgreSQL)
 docs/          etapa 1, wireframes, coleção Postman
 ```
 
-## 7. Próximas etapas
-Refinar a interface, e-mails de notificação, SLA com prazos, relatórios exportáveis e publicação (deploy).
+## 7. Etapa 3 — Funcionalidades complementares
+
+Balanço completo do planejado × implementado em [`docs/etapa3_balanco.md`](docs/etapa3_balanco.md). Novidades desta etapa:
+
+- **Gráficos no dashboard** (Chart.js): chamados por status, prioridade e categoria.
+- **Relatório exportável em CSV** (`/relatorios/chamados.csv`, botão no dashboard; só equipe).
+- **Notificações por e-mail**: novo chamado, mudança de status, assumido/atribuído e comentários públicos (nota interna nunca notifica o cliente). Em desenvolvimento o e-mail aparece no terminal; SMTP real via `.env`.
+- **Filtro por categoria** na lista de chamados (RF04).
+- **Cadastro de categorias e departamentos** pela tela `/gerenciar/` (RF09, só administrador).
+- Indicador `por_categoria` também na API (`GET /api/dashboard/`).
+
+## 8. Próximas etapas
+Entrega final e pitch; evoluções futuras: SLA com prazos e alertas, deploy.

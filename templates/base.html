@@ -20,7 +20,7 @@
       <a class="nav-link" href="{% url 'chamado_lista' %}">Chamados</a>
       <a class="nav-link" href="{% url 'chamado_novo' %}">Novo chamado</a>
       {% if user.eh_equipe %}<a class="nav-link" href="{% url 'dashboard' %}">Dashboard</a>{% endif %}
-      {% if user.eh_admin %}<a class="nav-link" href="/admin/">Administração</a>{% endif %}
+      {% if user.eh_admin %}<a class="nav-link" href="{% url 'gerenciar' %}">Categorias</a><a class="nav-link" href="/admin/">Administração</a>{% endif %}
     </div>
     <form method="post" action="{% url 'logout' %}" class="d-flex align-items-center gap-2">
       {% csrf_token %}
